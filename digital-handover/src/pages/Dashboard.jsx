@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { ArrowRight, CheckCheck, CircleCheck, FolderKanban, Plus, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import StatCard from '../components/StatCard.jsx'
-import StatusBadge from '../components/StatusBadge.jsx'
 import ProgressCard from './ProgressCard.jsx'
 import { getAuditLogs, getProjects } from '../services/api.js'
 

@@ -1,7 +1,7 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { useState } from 'react'
+import { AuthContext } from './authContext.js'
 import { addAuditLog } from '../services/api.js'
 
-const AuthContext = createContext(null)
 const USER_KEY = 'handover-user'
 
 function readUser() {
@@ -61,12 +61,6 @@ export function AuthProvider({ children }) {
     return nextUser
   }
 
-  const value = useMemo(() => ({ user, signIn, signUp, signOut, updateUser }), [user])
+  const value = { user, signIn, signUp, signOut, updateUser }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used inside AuthProvider.')
-  return context
 }

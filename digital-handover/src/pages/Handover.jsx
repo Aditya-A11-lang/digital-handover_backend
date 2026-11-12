@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ArrowLeft, CalendarDays, Check, CircleCheck, Download, FileText, Link2, MessageSquareText, Plus, UserRound } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import ProgressBar from '../components/ProgressBar.jsx'
@@ -7,13 +7,11 @@ import { getProject, updateProject } from '../services/api.js'
 
 export default function Handover() {
   const { projectId } = useParams()
-  const [project, setProject] = useState(() => getProject(projectId))
+  const [storedProject, setProject] = useState(() => ({ id: projectId, project: getProject(projectId) }))
+  const project = storedProject.id === projectId ? storedProject.project : getProject(projectId)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    setProject(getProject(projectId))
-    setError('')
-  }, [projectId])
+  const [addingItem, setAddingItem] = useState(false)
+  const [newItemTitle, setNewItemTitle] = useState('')
 
   if (!project) return <div className="page-wrap"><div className="empty-state"><h2>Project not found</h2><p>This handover may have been removed.</p><Link className="button button-primary" to="/projects">Back to projects</Link></div></div>
 
@@ -24,7 +22,7 @@ export default function Handover() {
     const checklist = project.checklist.map((task) => task.id === taskId ? { ...task, done: !task.done } : task)
     const allDone = checklist.every((task) => task.done)
     try {
-      setProject(updateProject(project.id, { checklist, ...(allDone ? { status: 'Completed' } : project.status === 'Completed' ? { status: 'In progress' } : {}) }))
+      setProject({ id: projectId, project: updateProject(project.id, { checklist, ...(allDone ? { status: 'Completed' } : project.status === 'Completed' ? { status: 'In progress' } : {}) }) })
       setError('')
     } catch (reason) {
       setError(reason.message || 'Unable to save this checklist update.')
@@ -33,11 +31,31 @@ export default function Handover() {
 
   function changeStatus(event) {
     try {
-      setProject(updateProject(project.id, { status: event.target.value }))
+      setProject({ id: projectId, project: updateProject(project.id, { status: event.target.value }) })
       setError('')
     } catch (reason) {
       setError(reason.message || 'Unable to update project status.')
     }
+  }
+
+  function addChecklistItem(event) {
+    event.preventDefault()
+    const title = newItemTitle.trim()
+    if (!title) return
+    try {
+      setProject({ id: projectId, project: updateProject(project.id, { checklist: [...project.checklist, { id: crypto.randomUUID(), title, owner: project.owner, done: false }] }) })
+      setNewItemTitle('')
+      setAddingItem(false)
+      setError('')
+    } catch (reason) {
+      setError(reason.message || 'Unable to add this checklist item.')
+    }
+  }
+
+  function prepareEssential(title) {
+    setNewItemTitle(title)
+    setAddingItem(true)
+    document.querySelector('.checklist-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   return (
@@ -55,13 +73,11 @@ export default function Handover() {
           <div className="handover-progress"><ProgressBar value={progress} /><span>{progress}% complete</span></div>
           <div className="checklist-items">{project.checklist.map((task) => <label className={`checklist-row${task.done ? ' task-done' : ''}`} key={task.id}><input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} /><span className="custom-checkbox">{task.done && <Check size={13} />}</span><span className="checklist-task-copy"><strong>{task.title}</strong><small><UserRound size={12} /> {task.owner}</small></span><CircleCheck className="checklist-check-icon" size={17} /></label>)}</div>
           {progress === 100 && <div className="completion-note"><CircleCheck size={18} /><span><strong>All wrapped up!</strong> This handover checklist is complete.</span></div>}
-          <button type="button" className="add-checklist-button" onClick={() => {
-            const title = window.prompt('What else needs to be handed over?')
-            if (title?.trim()) setProject(updateProject(project.id, { checklist: [...project.checklist, { id: crypto.randomUUID(), title: title.trim(), owner: project.owner, done: false }] }))
-          }}><Plus size={15} /> Add checklist item</button>
+          {addingItem && <form className="checklist-add-form" onSubmit={addChecklistItem}><input autoFocus aria-label="New checklist item" value={newItemTitle} onChange={(event) => setNewItemTitle(event.target.value)} placeholder="What needs to be handed over?" maxLength={120} /><button className="button button-primary" type="submit" disabled={!newItemTitle.trim()}>Add item</button><button className="button button-quiet" type="button" onClick={() => { setAddingItem(false); setNewItemTitle('') }}>Cancel</button></form>}
+          <button type="button" className="add-checklist-button" onClick={() => setAddingItem(true)}><Plus size={15} /> Add checklist item</button>
         </section>
         <aside className="handover-side-column">
-          <section className="section-panel handover-info"><div className="panel-heading"><div><h2>Handover essentials</h2><p>Helpful details for the next team.</p></div></div><div className="essential-row"><span><FileText size={16} /></span><div><strong>Project overview</strong><small>Scope, goals, and context</small></div><button type="button" aria-label="Add project overview" onClick={() => window.alert('Add your project overview to the checklist items above.')}><Plus size={16} /></button></div><div className="essential-row"><span><Link2 size={16} /></span><div><strong>Access & resources</strong><small>Links, tools, and repositories</small></div><button type="button" aria-label="Add resources" onClick={() => window.alert('Add your important access links to the checklist items above.')}><Plus size={16} /></button></div><div className="essential-row"><span><MessageSquareText size={16} /></span><div><strong>Open questions</strong><small>Decisions and follow-ups</small></div><button type="button" aria-label="Add open questions" onClick={() => window.alert('Add open questions to the checklist items above.')}><Plus size={16} /></button></div></section>
+          <section className="section-panel handover-info"><div className="panel-heading"><div><h2>Handover essentials</h2><p>Helpful details for the next team.</p></div></div><div className="essential-row"><span><FileText size={16} /></span><div><strong>Project overview</strong><small>Scope, goals, and context</small></div><button type="button" aria-label="Add project overview" onClick={() => prepareEssential('Project overview') }><Plus size={16} /></button></div><div className="essential-row"><span><Link2 size={16} /></span><div><strong>Access & resources</strong><small>Links, tools, and repositories</small></div><button type="button" aria-label="Add resources" onClick={() => prepareEssential('Access and resource links')}><Plus size={16} /></button></div><div className="essential-row"><span><MessageSquareText size={16} /></span><div><strong>Open questions</strong><small>Decisions and follow-ups</small></div><button type="button" aria-label="Add open questions" onClick={() => prepareEssential('Open questions and decisions')}><Plus size={16} /></button></div></section>
           <section className="handover-share-card"><span><Download size={18} /></span><h3>Ready to share?</h3><p>Your handover is easier when everyone knows where to look.</p><button className="button button-dark button-full" type="button" onClick={() => window.print()}>Print handover summary</button></section>
         </aside>
       </div>

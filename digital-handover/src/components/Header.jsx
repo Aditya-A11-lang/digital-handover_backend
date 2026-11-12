@@ -1,6 +1,6 @@
 import { Bell, Menu, Plus, Search } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/useAuth.js'
 
 const titles = {
   '/dashboard': ['Overview', 'Here’s what’s happening across your projects.'],
@@ -17,6 +17,7 @@ const titles = {
 export default function Header() {
   const { pathname } = useLocation()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [title, subtitle] = titles[pathname] || ['Project handover', 'Keep the next step moving.']
 
   function openMenu() {
@@ -34,7 +35,7 @@ export default function Header() {
         <label className="search-box">
           <Search size={16} />
           <input aria-label="Search projects" placeholder="Search..." onKeyDown={(event) => {
-            if (event.key === 'Enter' && event.currentTarget.value) window.location.href = `/projects?search=${encodeURIComponent(event.currentTarget.value)}`
+            if (event.key === 'Enter' && event.currentTarget.value) navigate(`/projects?search=${encodeURIComponent(event.currentTarget.value)}`)
           }} />
           <kbd>⌘ K</kbd>
         </label>

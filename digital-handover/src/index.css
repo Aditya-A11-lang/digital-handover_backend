@@ -1,10 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-
 :root {
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
   color: #242338;
   background: #f8f8fb;
-  font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -20,7 +17,6 @@
   --purple-dark: #654acb;
   --purple-soft: #f0edff;
   --green: #32956c;
-  --shadow: 0 8px 26px rgba(34, 29, 73, .045);
   font-synthesis: none;
 }
 

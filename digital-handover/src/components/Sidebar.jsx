@@ -1,15 +1,16 @@
 import {
-  Activity, Bot, CheckCheck, ChevronDown, CircleHelp, FileClock,
+  Activity, CheckCheck, ChevronDown, CircleHelp, FileClock,
   FolderKanban, LayoutDashboard, Layers3, LogOut, MessageCircle, Plug,
   Settings, Sparkles, X,
 } from 'lucide-react'
-import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/useAuth.js'
+import { getProjects } from '../services/api.js'
 
 const primaryLinks = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/reviews', label: 'Review center', icon: CheckCheck, badge: '3' },
+  { to: '/reviews', label: 'Review center', icon: CheckCheck },
 ]
 const workspaceLinks = [
   { to: '/ai-analysis', label: 'AI analysis', icon: Sparkles },
@@ -20,7 +21,9 @@ const workspaceLinks = [
 
 export default function Sidebar() {
   const { user, signOut } = useAuth()
+  const currentPath = useLocation().pathname
   const navigate = useNavigate()
+  const reviewCount = getProjects().filter((project) => project.status === 'Review').length
 
   function closeMenu() {
     document.body.classList.remove('sidebar-open')
@@ -35,7 +38,7 @@ export default function Sidebar() {
   return (
     <>
       <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={closeMenu} />
-      <aside className="sidebar">
+      <aside className="sidebar" data-current-route={currentPath}>
         <div className="sidebar-brand-row">
           <Link className="brand" to="/dashboard" onClick={closeMenu}>
             <span className="brand-mark"><Layers3 size={19} /></span>
@@ -50,9 +53,9 @@ export default function Sidebar() {
         </button>
         <nav className="side-nav" aria-label="Workspace navigation">
           <span className="nav-section-label">WORKSPACE</span>
-          {primaryLinks.map(({ to, label, icon: Icon, badge }) => (
+          {primaryLinks.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} onClick={closeMenu} className={({ isActive }) => `side-link${isActive ? ' active' : ''}`}>
-              <Icon size={17} /><span>{label}</span>{badge && <span className="nav-count">{badge}</span>}
+              <Icon size={17} /><span>{label}</span>{to === '/reviews' && reviewCount > 0 && <span className="nav-count">{reviewCount}</span>}
             </NavLink>
           ))}
           <span className="nav-section-label nav-section-spaced">TOOLS</span>
@@ -73,7 +76,6 @@ export default function Sidebar() {
           </div>
         </div>
         <div className="sidebar-footnote"><Activity size={13} /> All systems operational</div>
-        <span className="sr-only"><Bot /></span>
       </aside>
     </>
   )

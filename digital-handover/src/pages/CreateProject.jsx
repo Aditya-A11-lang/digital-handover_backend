@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { ArrowLeft, FolderPlus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useAuth } from '../context/useAuth.js'
 import { createProject } from '../services/api.js'
+
+const earliestDueDate = new Date().toISOString().slice(0, 10)
 
 export default function CreateProject() {
   const { user } = useAuth()
@@ -35,7 +37,7 @@ export default function CreateProject() {
           <label className="form-field">Client or team<input name="client" placeholder="e.g. Acme Studio" required maxLength={100} /></label>
           <label className="form-field">Project summary<textarea name="description" rows={4} placeholder="What is this project about?" required maxLength={500} /></label>
           <div className="form-row">
-            <label className="form-field">Target handover date<input name="dueDate" type="date" min={new Date().toISOString().slice(0, 10)} required /></label>
+            <label className="form-field">Target handover date<input name="dueDate" type="date" min={earliestDueDate} required /></label>
             <label className="form-field">Project owner<input name="owner" defaultValue={user.name} required /></label>
           </div>
           {error && <p className="form-error" role="alert">{error}</p>}

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from '../components/ProtectedRoute.jsx'
 import AuthLayout from '../layouts/AuthLayout.jsx'
 import DashboardLayout from '../layouts/DashboardLayout.jsx'
@@ -21,8 +21,8 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<AuthLayout title="Welcome back" description="Sign in to pick up right where your team left off." footer={<>New to handover? <a href="/signup">Create an account</a></>}><Login /></AuthLayout>} />
-      <Route path="/signup" element={<AuthLayout title="Make handovers a breeze" description="Create your workspace and bring every project detail together." footer={<>Already have an account? <a href="/login">Sign in</a></>}><Signup /></AuthLayout>} />
+      <Route path="/login" element={<AuthLayout title="Welcome back" description="Sign in to pick up right where your team left off." footer={<>New to handover? <Link to="/signup">Create an account</Link></>}><Login /></AuthLayout>} />
+      <Route path="/signup" element={<AuthLayout title="Make handovers a breeze" description="Create your workspace and bring every project detail together." footer={<>Already have an account? <Link to="/login">Sign in</Link></>}><Signup /></AuthLayout>} />
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
