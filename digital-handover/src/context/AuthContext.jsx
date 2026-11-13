@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AuthContext } from './authContext.js'
 import { addAuditLog } from '../services/api.js'
+import { createTeam, getCurrentUser, listTeams, login as loginRequest, refreshToken, signup as signupRequest } from '../api/services.js'
 
 const USER_KEY = 'handover-user'
+const ACCESS_TOKEN_KEY = 'access_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
+const TEAM_ID_KEY = 'current_team_id'
+const TEAM_KEY = 'current_team'
 
 function readUser() {
   try {
@@ -14,44 +19,164 @@ function readUser() {
   }
 }
 
+function readStoredJson(key) {
+  try {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : null
+  } catch (error) {
+    console.error(`Unable to read ${key} from the saved session.`, error)
+    return null
+  }
+}
+
+function getResponseValue(response, key) {
+  return response?.[key] || response?.data?.[key]
+}
+
+function getApiError(error, fallback) {
+  const detail = error?.response?.data?.detail
+  if (Array.isArray(detail)) return detail.map((item) => item.msg).filter(Boolean).join(' ')
+  return detail || error?.message || fallback
+}
+
+function normalizeUser(profile) {
+  if (!profile) return profile
+  return {
+    ...profile,
+    name: profile.name || profile.full_name || profile.email?.split('@')[0] || 'User',
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readUser)
+  const [team, setTeam] = useState(() => readStoredJson(TEAM_KEY))
+  const [isLoading, setIsLoading] = useState(true)
 
-  function signIn(email, password) {
-    if (!email.trim() || !password) throw new Error('Enter your email and password.')
-    const saved = JSON.parse(localStorage.getItem('handover-users') || '[]')
-    const knownUser = saved.find((item) => item.email.toLowerCase() === email.trim().toLowerCase())
-    const nextUser = knownUser || {
-      id: crypto.randomUUID(),
-      name: email.split('@')[0].replace(/[._-]/g, ' '),
-      email: email.trim().toLowerCase(),
-      role: 'Project manager',
-    }
-    if (knownUser && knownUser.password !== password) throw new Error('That password does not match this account.')
-    const { password: _password, ...profile } = nextUser
-    localStorage.setItem(USER_KEY, JSON.stringify(profile))
-    setUser(profile)
-    addAuditLog({ action: 'Signed in', actor: profile.name, detail: 'Started a new session' })
-    return profile
+  function saveTeam(nextTeam) {
+    const teamId = nextTeam?.team_id || nextTeam?.id
+    if (!teamId) return null
+    localStorage.setItem(TEAM_ID_KEY, String(teamId))
+    localStorage.setItem(TEAM_KEY, JSON.stringify(nextTeam))
+    setTeam(nextTeam)
+    return nextTeam
   }
 
-  function signUp({ name, email, password }) {
+  async function loadTeams() {
+    const response = await listTeams()
+    const teams = Array.isArray(response) ? response : response?.teams || []
+    const savedTeamId = localStorage.getItem(TEAM_ID_KEY)
+    const selected = teams.find((item) => String(item.team_id || item.id) === savedTeamId) || teams[0]
+    return selected ? saveTeam(selected) : null
+  }
+
+  function saveSession(response) {
+    const responseData = response?.data || response
+    const accessToken = typeof responseData === 'string'
+      ? responseData
+      : getResponseValue(response, 'access_token')
+        || getResponseValue(response, 'accessToken')
+        || getResponseValue(response, 'token')
+        || responseData?.jwt
+        || responseData?.token?.access_token
+    const refreshToken = getResponseValue(response, 'refresh_token') || getResponseValue(response, 'refreshToken')
+    if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  }
+
+  async function loadProfile() {
+    const profile = await getCurrentUser()
+    const nextUser = normalizeUser(profile?.user || profile)
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+    await loadTeams()
+    return nextUser
+  }
+
+  useEffect(() => {
+    async function restoreSession() {
+      if (!localStorage.getItem(ACCESS_TOKEN_KEY) && !localStorage.getItem('token')) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        await loadProfile()
+      } catch (error) {
+        const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+        if (savedRefreshToken) {
+          try {
+            const response = await refreshToken({ refresh_token: savedRefreshToken })
+            saveSession(response)
+            await loadProfile()
+          } catch (refreshError) {
+            console.error('Unable to refresh the saved backend session.', refreshError)
+            localStorage.removeItem(ACCESS_TOKEN_KEY)
+            localStorage.removeItem(REFRESH_TOKEN_KEY)
+            localStorage.removeItem(USER_KEY)
+            localStorage.removeItem(TEAM_ID_KEY)
+            localStorage.removeItem(TEAM_KEY)
+            setUser(null)
+            setTeam(null)
+          }
+        } else {
+          console.error('Unable to restore the saved backend session.', error)
+          localStorage.removeItem(ACCESS_TOKEN_KEY)
+          localStorage.removeItem(USER_KEY)
+          localStorage.removeItem(TEAM_ID_KEY)
+          localStorage.removeItem(TEAM_KEY)
+          setUser(null)
+          setTeam(null)
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    restoreSession()
+  }, [])
+
+  async function signIn(email, password) {
+    if (!email.trim() || !password) throw new Error('Enter your email and password.')
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem('token')
+    try {
+      const response = await loginRequest({ email: email.trim(), password })
+      saveSession(response)
+      const profile = normalizeUser(getResponseValue(response, 'user') || getResponseValue(response, 'profile'))
+      if (profile) {
+        localStorage.setItem(USER_KEY, JSON.stringify(profile))
+        setUser(profile)
+      }
+      const nextUser = profile || await loadProfile()
+      const selectedTeam = await loadTeams()
+      if (!selectedTeam) {
+        const createdTeam = await createTeam({ name: `${nextUser.name}'s workspace` })
+        saveTeam(createdTeam?.team || createdTeam)
+      }
+      addAuditLog({ action: 'Signed in', actor: nextUser.full_name || nextUser.name || email, detail: 'Started a new backend session' })
+      return nextUser
+    } catch (error) {
+      throw new Error(getApiError(error, 'Unable to sign in. Please try again.'))
+    }
+  }
+
+  async function signUp({ name, email, password }) {
     if (!name.trim() || !email.trim() || password.length < 8) {
       throw new Error('Add your name, a valid email, and a password with at least 8 characters.')
     }
-    const users = JSON.parse(localStorage.getItem('handover-users') || '[]')
-    if (users.some((item) => item.email.toLowerCase() === email.trim().toLowerCase())) {
-      throw new Error('An account with this email already exists. Please sign in.')
-    }
-    const newUser = { id: crypto.randomUUID(), name: name.trim(), email: email.trim().toLowerCase(), password, role: 'Project manager' }
-    localStorage.setItem('handover-users', JSON.stringify([...users, newUser]))
+    await signupRequest({ full_name: name.trim(), email: email.trim(), password })
     return signIn(email, password)
   }
 
   function signOut() {
-    if (user) addAuditLog({ action: 'Signed out', actor: user.name, detail: 'Ended the current session' })
+    if (user) addAuditLog({ action: 'Signed out', actor: user.full_name || user.name, detail: 'Ended the current backend session' })
     localStorage.removeItem(USER_KEY)
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(TEAM_ID_KEY)
+    localStorage.removeItem(TEAM_KEY)
     setUser(null)
+    setTeam(null)
   }
 
   function updateUser(updates) {
@@ -61,6 +186,6 @@ export function AuthProvider({ children }) {
     return nextUser
   }
 
-  const value = { user, signIn, signUp, signOut, updateUser }
+  const value = { user, team, teamId: localStorage.getItem(TEAM_ID_KEY), isLoading, signIn, signUp, signOut, updateUser, loadTeams }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

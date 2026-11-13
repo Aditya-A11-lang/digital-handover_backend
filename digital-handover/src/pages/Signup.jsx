@@ -8,13 +8,13 @@ export default function Signup() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault()
     setError('')
     setBusy(true)
     const form = new FormData(event.currentTarget)
     try {
-      signUp({ name: form.get('name'), email: form.get('email'), password: form.get('password') })
+      await signUp({ name: form.get('name'), email: form.get('email'), password: form.get('password') })
       navigate('/dashboard')
     } catch (reason) {
       setError(reason.message || 'Unable to create your account. Please try again.')

@@ -8,7 +8,32 @@ export default function Integrations() {
   const [integrations, setIntegrations] = useState(() => getIntegrations())
   const [error, setError] = useState('')
 
+  function startGithubAuth() {
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
+    if (!clientId) {
+      setError('GitHub OAuth is not configured. Add VITE_GITHUB_CLIENT_ID to the frontend environment.')
+      return
+    }
+
+    const state = crypto.randomUUID()
+    localStorage.setItem('github_oauth_state', state)
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: `${window.location.origin}/auth/github/callback`,
+      scope: 'repo read:user user:email',
+      state,
+    })
+    window.location.assign(`https://github.com/login/oauth/authorize?${params.toString()}`)
+  }
+
   function toggle(id) {
+    const integration = integrations.find((item) => item.id === id)
+    if (id === 'github' && integration && !integration.connected) {
+      startGithubAuth()
+      return
+    }
+
     try {
       setIntegrations(toggleIntegration(id))
       setError('')

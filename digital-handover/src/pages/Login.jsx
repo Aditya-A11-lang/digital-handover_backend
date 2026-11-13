@@ -8,12 +8,12 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault()
     setError('')
     setBusy(true)
     try {
-      signIn(new FormData(event.currentTarget).get('email'), new FormData(event.currentTarget).get('password'))
+      await signIn(new FormData(event.currentTarget).get('email'), new FormData(event.currentTarget).get('password'))
       navigate('/dashboard')
     } catch (reason) {
       setError(reason.message || 'Unable to sign in. Please try again.')
