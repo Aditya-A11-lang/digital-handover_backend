@@ -9,11 +9,13 @@ export async function signup(payload) {
 }
 
 export async function login(payload) {
-  return data(await apiClient.post('/auth/login', payload))
+  const response = await apiClient.post('/auth/login', payload)
+  return { data: response.data, headers: response.headers }
 }
 
 export async function refreshToken(payload) {
-  return data(await apiClient.post('/auth/refresh', payload))
+  const response = await apiClient.post('/auth/refresh', payload)
+  return { data: response.data, headers: response.headers }
 }
 
 export async function getCurrentUser() {

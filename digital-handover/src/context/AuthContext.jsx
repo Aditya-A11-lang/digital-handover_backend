@@ -71,16 +71,23 @@ export function AuthProvider({ children }) {
 
   function saveSession(response) {
     const responseData = response?.data || response
+    const responseAuthorization = response?.headers?.authorization || response?.headers?.Authorization
+    const headerToken = responseAuthorization?.replace(/^Bearer\s+/i, '')
     const accessToken = typeof responseData === 'string'
       ? responseData
-      : getResponseValue(response, 'access_token')
+      : headerToken
+        || responseData?.session?.access_token
+        || getResponseValue(response, 'access_token')
         || getResponseValue(response, 'accessToken')
         || getResponseValue(response, 'token')
         || responseData?.jwt
         || responseData?.token?.access_token
-    const refreshToken = getResponseValue(response, 'refresh_token') || getResponseValue(response, 'refreshToken')
+    const refreshToken = responseData?.session?.refresh_token
+      || getResponseValue(response, 'refresh_token')
+      || getResponseValue(response, 'refreshToken')
     if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    return accessToken || null
   }
 
   async function loadProfile() {
@@ -141,7 +148,10 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token')
     try {
       const response = await loginRequest({ email: email.trim(), password })
-      saveSession(response)
+      const accessToken = saveSession(response)
+      if (!accessToken) {
+        throw new Error('Login succeeded, but the backend did not return an access token.')
+      }
       const profile = normalizeUser(getResponseValue(response, 'user') || getResponseValue(response, 'profile'))
       if (profile) {
         localStorage.setItem(USER_KEY, JSON.stringify(profile))
