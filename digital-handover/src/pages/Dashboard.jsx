@@ -10,6 +10,7 @@ import {
   Plus,
   Sparkles
 } from 'lucide-react'
+import AssistantQuestion from '../components/AssistantQuestion.jsx'
 
 // Safe router link fallback for standalone preview & React Router apps
 function Link({ to, className, children }) {
@@ -1296,6 +1297,8 @@ export default function Dashboard() {
           tone="indigo"
         />
       </section>
+
+      <AssistantQuestion projects={projects} />
 
       {/* Interactive Analytics Charts */}
       <WorkspaceCharts
