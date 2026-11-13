@@ -5,6 +5,7 @@ import DashboardLayout from '../layouts/DashboardLayout.jsx'
 import AIAnalysis from '../pages/AIAnalysis.jsx'
 import AuditLogs from '../pages/AuditLogs.jsx'
 import Chatbot from '../pages/Chatbot.jsx'
+import GitHubCallback from '../components/GitHubCallback.jsx'
 import CreateProject from '../pages/CreateProject.jsx'
 import Dashboard from '../pages/Dashboard.jsx'
 import Handover from '../pages/Handover.jsx'
@@ -23,6 +24,7 @@ export default function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<AuthLayout title="Welcome back" description="Sign in to pick up right where your team left off." footer={<>New to handover? <Link to="/signup">Create an account</Link></>}><Login /></AuthLayout>} />
       <Route path="/signup" element={<AuthLayout title="Make handovers a breeze" description="Create your workspace and bring every project detail together." footer={<>Already have an account? <Link to="/login">Sign in</Link></>}><Signup /></AuthLayout>} />
+      <Route path="/auth/github/callback" element={<GitHubCallback />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
