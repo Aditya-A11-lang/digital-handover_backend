@@ -29,6 +29,17 @@ function getProjects(value) {
   }))
 }
 
+function getGroqErrorMessage(status) {
+  if (status === 400) return 'Groq rejected the chat request. Check the configured model and request settings.'
+  if (status === 401) return 'Groq rejected the API key. Update GROQ_API_KEY in your local and Vercel server environment.'
+  if (status === 403) return 'Groq denied access to this model. Check the API key permissions and GROQ_MODEL.'
+  if (status === 404) return 'Groq could not find the configured model. Set GROQ_MODEL to openai/gpt-oss-20b.'
+  if (status === 413) return 'The chat request is too large. Shorten the prompt or reduce workspace data.'
+  if (status === 429) return 'Groq rate limit or usage quota reached. Check your Groq account limits and try again later.'
+  if (status >= 500) return 'Groq is temporarily unavailable. Please try again later.'
+  return `Groq request failed (HTTP ${status}). Check the API key, model, and account limits.`
+}
+
 export async function handleChat(req, res, env = process.env) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -90,10 +101,9 @@ export async function handleChat(req, res, env = process.env) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        model: env.GROQ_MODEL || 'openai/gpt-oss-20b',
         messages: groqMessages,
-        temperature: 0.4,
-        max_tokens: 700,
+        max_completion_tokens: 700,
       }),
     })
   } catch (error) {
@@ -103,7 +113,7 @@ export async function handleChat(req, res, env = process.env) {
 
   if (!groqResponse.ok) {
     console.error('Groq chat request failed with status:', groqResponse.status)
-    return res.status(502).json({ error: 'The assistant service could not complete your request.' })
+    return res.status(502).json({ error: getGroqErrorMessage(groqResponse.status) })
   }
 
   let result

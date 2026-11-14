@@ -122,14 +122,11 @@ function getAuditLogs() {
 // Animated StatCard with smooth count-up transition
 function StatCard({ label, value, change, note, icon: Icon, tone = 'indigo' }) {
   const [displayValue, setDisplayValue] = useState(0)
+  const isNumericValue = /^([^\d.-]*)([\d.]+)(.*)$/.test(String(value))
 
   useEffect(() => {
-    const rawStr = String(value)
-    const match = rawStr.match(/^([^\d.-]*)([\d.]+)(.*)$/)
-    if (!match) {
-      setDisplayValue(value)
-      return
-    }
+    const match = String(value).match(/^([^\d.-]*)([\d.]+)(.*)$/)
+    if (!match) return
 
     const [, prefix, numStr, suffix] = match
     const target = parseFloat(numStr)
@@ -166,7 +163,7 @@ function StatCard({ label, value, change, note, icon: Icon, tone = 'indigo' }) {
         )}
       </div>
       <div className="stat-value-row">
-        <strong className="stat-value">{displayValue}</strong>
+        <strong className="stat-value">{isNumericValue ? displayValue : value}</strong>
         {change && <span className="stat-change">{change}</span>}
       </div>
       <p className="stat-note">{note}</p>
@@ -184,13 +181,13 @@ function ProgressCard({ project, isSelected, onSelect }) {
   return (
     <article
       className={`progress-card ${isSelected ? 'is-selected' : ''}`}
-      onClick={() => onSelect && onSelect(project.id)}
+      onClick={() => onSelect?.(project.id)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onSelect && onSelect(project.id)
+          onSelect?.(project.id)
         }
       }}
     >
@@ -300,7 +297,7 @@ function WorkspaceCharts({ projects, selectedProjectId, onSelectProject }) {
                   className={`bar-column ${isHighlighted ? 'is-active' : ''}`}
                   onMouseEnter={() => setHoveredBar(item.id)}
                   onMouseLeave={() => setHoveredBar(null)}
-                  onClick={() => onSelectProject && onSelectProject(item.id === selectedProjectId ? null : item.id)}
+                  onClick={() => onSelectProject?.(item.id === selectedProjectId ? null : item.id)}
                 >
                   <div className={`bar-tooltip ${isHighlighted ? 'visible' : ''}`}>
                     <strong>{item.name}</strong>
